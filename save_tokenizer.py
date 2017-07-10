@@ -63,6 +63,6 @@ sentences = word2vec.array(textraw)
 model = word2vec.Word2Vec(sentences, size=250)
 
 # Save our model.
-model.save_word2vec_format("med250.model.bin", binary=True)
-# model.save("med250.model.bin")
+# model.wv.save_word2vec_format("med250.model.bin", binary=True)
+model.save("med250.model.bin")
 
