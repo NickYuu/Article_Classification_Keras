@@ -30,7 +30,7 @@ def to_one_hot(x):
 # 詞向量空間維度
 EMBEDDING_DIM = 200
 # 每條文本最大長度
-MAX_SEQUENCE_LENGTH = 80
+MAX_SEQUENCE_LENGTH = 50
 # word2vec模型
 VECTOR_DIR = 'med250.model.bin'
 
@@ -43,7 +43,7 @@ for i, d in enumerate(df.category.unique()):
 textraw = df.ttc.values.tolist()
 
 # keras處理token
-maxfeatures = 100000  # 只選擇重要的詞
+maxfeatures = 5000  # 只選擇重要的詞
 
 token = Tokenizer(num_words=maxfeatures)
 token.fit_on_texts(textraw)  # 如果文本較大可以使用文本流
@@ -68,7 +68,6 @@ Y_train = np_utils.to_categorical(train_y, nb_classes)
 Y_test = np_utils.to_categorical(test_y, nb_classes)
 
 # ----------------------------------------
-
 w2v_model = gensim.models.Word2Vec.load(VECTOR_DIR)
 embedding_matrix = np.zeros((len(word_index) + 1, EMBEDDING_DIM))
 for word, i in word_index.items():
@@ -84,23 +83,19 @@ embedding_layer = Embedding(len(word_index) + 1,
 
 model = Sequential()
 model.add(embedding_layer)
-model.add(Conv1D(512, 3, padding='valid', activation='relu', strides=1))
-model.add(Conv1D(512, 3, padding='valid', activation='relu', strides=1))
+model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
+model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
 model.add(MaxPooling1D(3))
 model.add(Dropout(0.2))
 model.add(Conv1D(512, 3, padding='valid', activation='relu', strides=1))
-model.add(Conv1D(512, 3, padding='valid', activation='relu', strides=1))
 model.add(MaxPooling1D(3))
-
-# model.add(LSTM(256))
 model.add(Flatten())
-model.add(Dense(1024, activation='relu'))
 model.add(Dense(1024, activation='relu'))
 model.add(Dense(nb_classes, activation='softmax'))
 model.summary()
 # plot_model(model, to_file='model.png',show_shapes=True)
 model.compile(loss='categorical_crossentropy',
-              optimizer='rmsprop',
+              optimizer='adam',
               metrics=['acc'])
-model.fit(X_train, Y_train, validation_split=0.2, epochs=100, batch_size=8)
+model.fit(X_train, Y_train, validation_split=0.2, epochs=100, batch_size=128, verbose=2)
 print(model.evaluate(X_test, Y_test))
