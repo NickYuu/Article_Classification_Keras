@@ -1,15 +1,14 @@
-#!/usr/bin/env python3  
-# -*- coding: utf-8 -*-  
-"""  
-@desc:  
-@author: TsungHan Yu  
-@contact: nick.yu@hzn.com.tw  
-@software: PyCharm  @since:python 3.6.0 on 2017/7/3
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@desc:
+@author: TsungHan Yu
+@contact: nick.yu@hzn.com.tw
+@software: PyCharm  @since:python 3.6.0 on 2017/7/23
 """
 from os import path
 import os
 import re
-import codecs
 import pandas as pd
 import numpy as np
 import itertools

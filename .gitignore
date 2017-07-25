@@ -1,1 +1,6 @@
 med250.model.bin
+med250.model.bin.syn1neg.npy
+med250.model.bin.wv.syn0.npy
+data.csv
+*.DS_Store
+.DS_Store
