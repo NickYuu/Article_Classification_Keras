@@ -6,7 +6,8 @@
 @contact: nick.yu@hzn.com.tw
 @software: PyCharm  @since:python 3.6.0 on 2017/7/23
 """
-from os import path
+
+from keras.models import model_from_json
 import os
 import re
 import pandas as pd
@@ -20,17 +21,18 @@ from sklearn.model_selection import train_test_split
 from keras.layers import Dense, Input, Flatten, Dropout
 from keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from keras.models import Sequential
-
+from keras.callbacks import EarlyStopping
 
 def to_one_hot(x):
     for i, d in enumerate(df.category.unique()):
         if d == x:
             return i
 
+
 # 詞向量空間維度
 EMBEDDING_DIM = 200
 # 每條文本最大長度
-MAX_SEQUENCE_LENGTH = 50
+MAX_SEQUENCE_LENGTH = 200
 # word2vec模型
 VECTOR_DIR = 'med250.model.bin'
 
@@ -74,28 +76,48 @@ for word, i in word_index.items():
     if np.unicode(word) in w2v_model:
         embedding_matrix[i] = np.asarray(w2v_model[np.unicode(word)],
                                          dtype='float32')
+try:
+    model = model_from_json(open('ASaveModel/my_model_architecture.json').read())
+    print("載入模型成功!繼續訓練模型")
+except:
+    print("載入模型失敗!開始訓練一個新模型")
+    model = Sequential()
 
-embedding_layer = Embedding(len(word_index) + 1,
-                            EMBEDDING_DIM,
-                            weights=[embedding_matrix],
-                            input_length=MAX_SEQUENCE_LENGTH,
-                            trainable=False)
+    embedding_layer = Embedding(len(word_index) + 1,
+                                EMBEDDING_DIM,
+                                weights=[embedding_matrix],
+                                input_length=MAX_SEQUENCE_LENGTH,
+                                trainable=False)
 
-model = Sequential()
-model.add(embedding_layer)
-model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
-model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
-model.add(MaxPooling1D(3))
-model.add(Dropout(0.2))
-model.add(Conv1D(512, 3, padding='valid', activation='relu', strides=1))
-model.add(MaxPooling1D(3))
-model.add(Flatten())
-model.add(Dense(1024, activation='relu'))
-model.add(Dense(nb_classes, activation='softmax'))
+    model.add(embedding_layer)
+    # model.add(Conv1D(64, 3, padding='valid', activation='relu', strides=1))
+    model.add(Conv1D(256, 2, padding='valid', activation='relu', strides=1))
+    model.add(MaxPooling1D(3))
+    model.add(Dropout(0.3))
+    model.add(Conv1D(256, 2, padding='valid', activation='relu', strides=1))
+    model.add(MaxPooling1D(3))
+    model.add(Flatten())
+    model.add(Dropout(0.5))
+    model.add(Dense(128, activation='relu'))
+    # model.add(Dropout(0.3))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(nb_classes, activation='softmax'))
+    json_string = model.to_json()
+    open('SaveModel/my_model_architecture.json', 'w').write(json_string)
+
 model.summary()
-# plot_model(model, to_file='model.png',show_shapes=True)
+try:
+    model.load_weights("SaveModel/model_weights.h5")
+    print("載入模型成功!繼續訓練模型")
+except:
+    print("載入模型失敗!開始訓練一個新模型")
+
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['acc'])
-model.fit(X_train, Y_train, validation_split=0.2, epochs=100, batch_size=128, verbose=2)
+
+early_stopping = EarlyStopping(monitor='val_loss', patience=0, verbose=0, mode='auto')
+model.fit(X_train, Y_train, validation_split=0.1, epochs=100, batch_size=8, verbose=2, callbacks=[early_stopping]) # , callbacks=[early_stopping]
+
+model.save_weights('SaveModel/model_weights.h5')
 print(model.evaluate(X_test, Y_test))
