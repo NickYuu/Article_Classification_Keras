@@ -6,13 +6,15 @@
 @contact: nick.yu@hzn.com.tw
 @software: PyCharm  @since:python 3.6.0 on 2017/7/23
 """
+import json
 
-from keras.models import model_from_json
-import os
+import jieba
 import re
+import requests
+from keras.models import model_from_json
+from os.path import expanduser
 import pandas as pd
 import numpy as np
-import itertools
 from keras.preprocessing.text import Tokenizer
 import gensim
 from keras.preprocessing import sequence
@@ -22,6 +24,40 @@ from keras.layers import Dense, Input, Flatten, Dropout
 from keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from keras.models import Sequential
 from keras.callbacks import EarlyStopping
+
+
+def sent_vec(text):
+    # load stopwords set
+    stopwordset = set()
+    with open('jieba_dict/stopwords.txt', 'r', encoding='utf-8') as sw:
+        for line in sw:
+            stopwordset.add(line.strip('\n'))
+
+    words = jieba.cut(text, cut_all=False)
+    word_list = ''
+    for word in words:
+        if word not in stopwordset:
+            word_list += word + ' '
+    return word_list
+
+jsonData = requests.get('http://52.187.15.181/api/?limit=600').text
+text = json.loads(jsonData)
+arr = text['data']
+variables = arr[0].keys()
+df = pd.DataFrame([[i[j] for j in variables] for i in arr], columns=variables)
+df = pd.DataFrame({'category': df.category, 'text': df.title + df.content})
+nb_classes = len(df.category.unique())
+
+# 非正常字符轉空格
+df['text'] = df['text'].str.replace(u'\W+', ' ', flags=re.U)
+# 英文轉ENG
+df['text'] = df['text'].str.replace(r'[A-Za-z]+', ' ENG ')
+# 數字轉NUM
+df['text'] = df['text'].str.replace(r'\d+', ' NUM ')
+
+df.text = df.text.map(sent_vec)
+
+df.to_csv('data.csv')
 
 def to_one_hot(x):
     for i, d in enumerate(df.category.unique()):
@@ -34,7 +70,8 @@ EMBEDDING_DIM = 200
 # 每條文本最大長度
 MAX_SEQUENCE_LENGTH = 200
 # word2vec模型
-VECTOR_DIR = 'med250.model.bin'
+# VECTOR_DIR = 'med250.model.bin'
+VECTOR_DIR = expanduser('~') + '/model200/med250.model.bin'
 
 df = pd.read_csv('data.csv')
 
@@ -42,7 +79,7 @@ cateDic = {}
 for i, d in enumerate(df.category.unique()):
     cateDic[i] = d
 
-textraw = df.ttc.values.tolist()
+textraw = df.text.values.tolist()
 
 # keras處理token
 maxfeatures = 5000  # 只選擇重要的詞
@@ -117,7 +154,8 @@ model.compile(loss='categorical_crossentropy',
               metrics=['acc'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=0, verbose=0, mode='auto')
-model.fit(X_train, Y_train, validation_split=0.1, epochs=100, batch_size=8, verbose=2, callbacks=[early_stopping]) # , callbacks=[early_stopping]
+model.fit(X_train, Y_train, validation_split=0.1, epochs=100, batch_size=8, verbose=2,
+          callbacks=[early_stopping])  # , callbacks=[early_stopping]
 
 model.save_weights('SaveModel/model_weights.h5')
 print(model.evaluate(X_test, Y_test))

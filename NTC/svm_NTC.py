@@ -8,7 +8,7 @@
 @since:python 3.6.0 on 2017/7/25
 """
 
-from os import path
+from os.path import expanduser
 import os
 import re
 import pandas as pd
@@ -33,7 +33,8 @@ EMBEDDING_DIM = 200
 # 每條文本最大長度
 MAX_SEQUENCE_LENGTH = 60
 # word2vec模型
-VECTOR_DIR = 'med250.model.bin'
+# VECTOR_DIR = 'med250.model.bin'
+VECTOR_DIR = expanduser("~") + '/model200/med250.model.bin'
 
 df = pd.read_csv('data.csv')
 
