@@ -46,7 +46,7 @@ arr = text['data']
 variables = arr[0].keys()
 df = pd.DataFrame([[i[j] for j in variables] for i in arr], columns=variables)
 df = pd.DataFrame({'category': df.category, 'text': df.title + df.content})
-nb_classes = len(df.category.unique())
+# nb_classes = len(df.category.unique())
 
 # 非正常字符轉空格
 df['text'] = df['text'].str.replace(u'\W+', ' ', flags=re.U)
@@ -57,7 +57,7 @@ df['text'] = df['text'].str.replace(r'\d+', ' NUM ')
 
 df.text = df.text.map(sent_vec)
 
-df.to_csv('data.csv')
+df.to_csv('data.csv', encoding='utf8')
 
 def to_one_hot(x):
     for i, d in enumerate(df.category.unique()):
@@ -73,7 +73,7 @@ MAX_SEQUENCE_LENGTH = 200
 # VECTOR_DIR = 'med250.model.bin'
 VECTOR_DIR = expanduser('~') + '/model200/med250.model.bin'
 
-df = pd.read_csv('data.csv')
+# df = pd.read_csv('data.csv')
 
 cateDic = {}
 for i, d in enumerate(df.category.unique()):
@@ -88,12 +88,16 @@ token = Tokenizer(num_words=maxfeatures)
 token.fit_on_texts(textraw)  # 如果文本較大可以使用文本流
 text_seq = token.texts_to_sequences(textraw)
 word_index = token.word_index
-
+print(df.category)
 df.category = df.category.map(to_one_hot)
 y = df.category.values  # 定義好標籤
+print(y)
 nb_classes = len(df.category.unique())
 
-train_X, test_X, train_y, test_y = train_test_split(text_seq, y, train_size=0.8, random_state=1)
+print(nb_classes)
+print('@@@@@@@@@@@@@@@@')
+
+train_X, test_X, train_y, test_y = train_test_split(text_seq, y, train_size=0.9, random_state=1)
 
 # 轉為等長矩陣，長度為maxlen
 print("Pad sequences (samples x time)")
@@ -127,17 +131,18 @@ except:
                                 trainable=False)
 
     model.add(embedding_layer)
-    # model.add(Conv1D(64, 3, padding='valid', activation='relu', strides=1))
-    model.add(Conv1D(256, 2, padding='valid', activation='relu', strides=1))
-    model.add(MaxPooling1D(3))
-    model.add(Dropout(0.3))
-    model.add(Conv1D(256, 2, padding='valid', activation='relu', strides=1))
-    model.add(MaxPooling1D(3))
-    model.add(Flatten())
-    model.add(Dropout(0.5))
-    model.add(Dense(128, activation='relu'))
+    # model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
+    # model.add(Conv1D(256, 3, padding='valid', activation='relu', strides=1))
+    # model.add(MaxPooling1D(3))
     # model.add(Dropout(0.3))
-    model.add(Dense(128, activation='relu'))
+    # # model.add(Conv1D(256, 2, padding='valid', activation='relu', strides=1))
+    # # model.add(MaxPooling1D(3))
+    # model.add(Flatten())
+    model.add(LSTM(32))
+    # model.add(Dropout(0.5))
+    model.add(Dense(256, activation='relu'))
+    # model.add(Dropout(0.5))
+    # model.add(Dense(128, activation='relu'))
     model.add(Dense(nb_classes, activation='softmax'))
     json_string = model.to_json()
     open('SaveModel/my_model_architecture.json', 'w').write(json_string)
@@ -154,8 +159,7 @@ model.compile(loss='categorical_crossentropy',
               metrics=['acc'])
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=0, verbose=0, mode='auto')
-model.fit(X_train, Y_train, validation_split=0.1, epochs=100, batch_size=8, verbose=2,
-          callbacks=[early_stopping])  # , callbacks=[early_stopping]
+model.fit(X_train, Y_train, validation_split=0.1, epochs=100, batch_size=8, verbose=2, callbacks=[early_stopping])  # , callbacks=[early_stopping]
 
 model.save_weights('SaveModel/model_weights.h5')
 print(model.evaluate(X_test, Y_test))
